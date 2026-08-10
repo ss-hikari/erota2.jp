@@ -1,0 +1,22 @@
+/*   
+Theme Name: XeoryBase
+Theme URI: https://xeory.jp/
+Description: Xeoryベーステーマ
+Author: バズ部
+Author URI: https://lucy.ne.jp/bazubu/
+Version: 0.1.4
+*/
+
+@import "compass";
+
+
+// base用の記述
+// ディスプレイ
+@import "display";
+// コモンCSS
+@import "common";
+
+// sp
+@import "sp";
+// カラー
+@import "color";

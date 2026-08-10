@@ -1,0 +1,57 @@
+<?php get_header(); ?>
+
+<div id="content" class="container">
+  <div id="main" class="main">
+    <?php while (have_posts()) : the_post(); ?>
+      <article <?php post_class(); ?>>
+        <h1 class="entry-title"><?php the_title(); ?></h1>
+
+        <?php
+        $movie_url = get_field('fanza_samplemovieurl');
+        if ($movie_url) :
+        ?>
+          <div class="fanza-video-wrapper">
+            <iframe src="<?php echo esc_url($movie_url); ?>"
+              frameborder="0"
+              scrolling="no"
+              allowfullscreen
+              loading="lazy"></iframe>
+          </div>
+        <?php endif; ?>
+
+        <div class="entry-content">
+          <?php the_content(); ?>
+        </div>
+
+        <?php
+        $sample_images_raw = get_field('fanza_sampleimageurl');
+        if ($sample_images_raw) :
+          $sample_images = array_filter(array_map('trim', explode("\n", $sample_images_raw)));
+          if ($sample_images) :
+        ?>
+        サンプル画像
+        <hr>
+
+            <div class="fanza-sample-images">
+              <?php foreach ($sample_images as $img_url) : ?>
+                <img src="<?php echo esc_url($img_url); ?>" loading="lazy" alt="">
+              <?php endforeach; ?>
+            </div>
+        <?php endif;
+        endif; ?>
+
+        <?php
+        $affiliate_url = get_field('fanza_affiliateurl');
+        if ($affiliate_url) :
+        ?>
+          <p class="fanza-affiliate-link">
+            <a href="<?php echo esc_url($affiliate_url); ?>" target="_blank" rel="nofollow noopener">FANZAで詳細を見る</a>
+          </p>
+        <?php endif; ?>
+
+      </article>
+    <?php endwhile; ?>
+  </div>
+</div>
+
+<?php get_footer(); ?>

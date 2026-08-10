@@ -1,0 +1,168 @@
+@charset "UTF-8";
+/* ----------------------------------------
+* LP
+---------------------------------------- */
+.single-lp {
+    padding: 40px 0;
+}
+.single-lp .lp-wrap {
+    width: 1157px;
+    border: 1px solid #efefef;
+    margin: 0 auto;
+    background: #fff;
+    padding: 45px 0;
+}
+.single-lp .lp-thumbnail {
+    border: 1px #ccc solid;
+    float: right;
+    margin: 0 0 13px 13px;
+    border: 1px #ccc solid;
+}
+.single-lp .lp-thumbnail img {
+    vertical-align: top;
+}
+.single-lp .post-content {
+    padding: 0;
+    overflow: hidden;
+}
+.single-lp #lp-header {
+    background: #fff;
+    padding: 0 56px;
+}
+.single-lp #lp-header h1 {
+    font-size: 32px;
+    color: #1b7bc1;
+    padding-bottom: 35px;
+    border-bottom: 1px solid #efefef;
+}
+.single-lp #content {
+    padding: 40px 56px;
+    overflow: hidden;
+}
+.single-lp #main {
+    width: 100%;
+}
+.single-lp .main-inner {
+    overflow: hidden;
+    margin-right: 350px;
+}
+/* one-column */
+.one-column.single-lp #main{
+    float: none;
+}
+.one-column.single-lp .main-inner {
+    margin-left: 0;
+    margin-right: 0;
+}
+.one-column.single-lp #side{
+    float: none;
+    width: 100%;
+    margin-left: 0;
+    margin-right: 0;
+}
+.single-lp #side {
+    width: 320px;
+    margin-left: -320px;
+}
+.single-lp.right-content #side {
+    width: 320px;
+    margin-left: -100%;
+}
+.single-lp.right-content .main-inner{
+    margin-left: 350px;
+    margin-right: 0;
+}
+.single-lp .post-footer {
+    padding: 20px 0;
+}
+.single-lp .lp-form {
+    background: #494c4e;
+    color: #fff;
+    padding: 30px;
+    width: 100%;
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
+}
+.single-lp .lp-form h3{
+    font-weight: bold;
+    font-size: 18px;
+    margin-bottom: 12px;
+}
+.single-lp .lp-form input[type=text],
+.single-lp .lp-form input[type=email] {
+    width: 90%;
+    padding: 10px 5%;
+    border: none;
+}
+.single-lp .lp-form input[type=submit],
+.single-lp .lp-form button {
+    width: 100%;
+    padding: 10px 0;
+    background: #5ace5f;
+    color: #fff;
+    border-bottom: 5px solid #38bd3e;
+    -webkit-transition: all ease-in-out 0.3s;
+            transition: all ease-in-out 0.3s;
+    border-radius: 3px;
+}
+.single-lp .lp-form input[type=submit]:hover,
+.single-lp .lp-form button:hover {
+    background: #6ed472;
+}
+.single-lp .lp-form dl {
+    margin-bottom: 13px;
+}
+
+@media screen and (max-width: 1200px) {
+    .single-lp .lp-wrap {
+        width: auto;
+        margin: 0 36px;
+    }
+    .single-lp .main-inner {
+        margin-right: 350px;
+    }
+}
+
+@media screen and (max-width: 991px) {
+    .single-lp #lp-header {
+        padding-left: 24px;
+        padding-right: 24px;
+    }
+    .single-lp #lp-header .lp-title {
+        padding: 0;
+        margin: 0;
+        font-size: 21px;
+    }
+    .single-lp #content {
+        padding: 20px;
+    }
+    .single-lp .lp-wrap {
+        padding: 24px 0;
+        width: auto;
+        margin: 0 24px;
+    }
+    .single-lp .lp-wrap input[type=text] {
+       width: 100%;
+    }
+    .single-lp .lp-wrap input[type=submit] {
+        margin-top: 30px;
+    }
+    .single-lp .post-content {
+        padding: 0 !important;
+    }
+    .single-lp #side {
+        margin-left: 0;
+        width: 100%;
+    }
+    .single-lp #side dl,
+    .single-lp #side dt,
+    .single-lp #side dd {
+        width: 100%;
+        margin: 0 0 20px;
+        padding: 0;
+    }
+    .single-lp #side dt {
+        margin-bottom: 8px;
+    }
+}

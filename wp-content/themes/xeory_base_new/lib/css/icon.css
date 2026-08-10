@@ -1,0 +1,237 @@
+/*icon*/
+.fa-angle-up {
+  position: relative;
+}
+.fa-angle-up:before {
+  content: "";
+  position: absolute;
+  -webkit-mask: url(../images/icon/angle-up.svg) no-repeat;
+          mask: url(../images/icon/angle-up.svg) no-repeat;
+  -webkit-mask-size: contain;
+          mask-size: contain;
+  background-color: #fff;
+  width: 18px;
+  height: 18px;
+  top: 17px;
+  right: -9px;
+}
+
+.fa-facebook-square {
+  position: relative;
+}
+.fa-facebook-square:before {
+  content: "";
+  position: absolute;
+  -webkit-mask: url(../images/icon/facebook.svg) no-repeat;
+          mask: url(../images/icon/facebook.svg) no-repeat;
+  -webkit-mask-size: contain;
+          mask-size: contain;
+  background-color: #ccc;
+  width: 20px;
+  height: 20px;
+  top: 0;
+  left: 0;
+}
+.fa-facebook-square:hover {
+  cursor: pointer;
+}
+.fa-facebook-square:hover::before {
+  background-color: #0866ff;
+  cursor: pointer;
+}
+
+.fa-rss {
+  position: relative;
+}
+.fa-rss:before {
+  content: "";
+  position: absolute;
+  -webkit-mask: url(../images/icon/rss.svg) no-repeat;
+          mask: url(../images/icon/rss.svg) no-repeat;
+  -webkit-mask-size: contain;
+          mask-size: contain;
+  background-color: #ccc;
+  width: 18px;
+  height: 18px;
+  top: 0;
+  left: 0;
+}
+.fa-rss:hover {
+  cursor: pointer;
+}
+.fa-rss:hover::before {
+  background-color: #6CC655;
+  cursor: pointer;
+}
+
+.fa-x {
+  position: relative;
+}
+.fa-x:before {
+  content: "";
+  position: absolute;
+  -webkit-mask: url(../images/icon/twitter.svg) no-repeat;
+          mask: url(../images/icon/twitter.svg) no-repeat;
+  -webkit-mask-size: contain;
+          mask-size: contain;
+  background-color: #ccc;
+  width: 18px;
+  height: 18px;
+  top: 0;
+  left: 0;
+}
+.fa-x:hover {
+  cursor: pointer;
+}
+.fa-x:hover::before {
+  background-color: #000;
+  cursor: pointer;
+}
+
+.fa-clock-o {
+  position: relative;
+}
+.fa-clock-o:before {
+  content: "";
+  position: absolute;
+  -webkit-mask: url(../images/icon/clock.svg) no-repeat;
+          mask: url(../images/icon/clock.svg) no-repeat;
+  -webkit-mask-size: contain;
+          mask-size: contain;
+  background-color: #383838;
+  width: 13px;
+  height: 13px;
+  top: 0;
+  left: -16px;
+}
+
+.fa-home {
+  position: relative;
+}
+.fa-home:before {
+  content: "";
+  position: absolute;
+  -webkit-mask: url(../images/icon/home.svg) no-repeat;
+          mask: url(../images/icon/home.svg) no-repeat;
+  -webkit-mask-size: contain;
+          mask-size: contain;
+  background-color: #383838;
+  width: 13px;
+  height: 13px;
+  top: 0;
+  left: -16px;
+}
+
+.fa-folder {
+  position: relative;
+}
+.fa-folder:before {
+  content: "";
+  position: absolute;
+  -webkit-mask: url(../images/icon/folder.svg) no-repeat;
+          mask: url(../images/icon/folder.svg) no-repeat;
+  -webkit-mask-size: contain;
+          mask-size: contain;
+  background-color: #383838;
+  width: 12px;
+  height: 12px;
+  top: 0;
+  left: -16px;
+}
+
+.fa-tag {
+  position: relative;
+}
+.fa-tag:before {
+  content: "";
+  position: absolute;
+  -webkit-mask: url(../images/icon/tag.svg) no-repeat;
+          mask: url(../images/icon/tag.svg) no-repeat;
+  -webkit-mask-size: contain;
+          mask-size: contain;
+  background-color: #383838;
+  width: 13px;
+  height: 13px;
+  top: 0;
+  left: -16px;
+}
+
+.fa-file {
+  position: relative;
+}
+.fa-file:before {
+  content: "";
+  position: absolute;
+  -webkit-mask: url(../images/icon/file.svg) no-repeat;
+          mask: url(../images/icon/file.svg) no-repeat;
+  -webkit-mask-size: contain;
+          mask-size: contain;
+  background-color: #383838;
+  width: 12px;
+  height: 12px;
+  top: 0;
+  left: -16px;
+}
+
+.fa-file-text {
+  position: relative;
+}
+.fa-file-text:before {
+  content: "";
+  position: absolute;
+  -webkit-mask: url(../images/icon/file-text.svg) no-repeat;
+          mask: url(../images/icon/file-text.svg) no-repeat;
+  -webkit-mask-size: contain;
+          mask-size: contain;
+  background-color: #383838;
+  width: 12px;
+  height: 12px;
+  top: 0;
+  left: -16px;
+}
+
+.fa-align-justify {
+  position: relative;
+}
+.fa-align-justify:before {
+  content: "";
+  position: absolute;
+  -webkit-mask: url(../images/icon/align-justify.svg) no-repeat;
+          mask: url(../images/icon/align-justify.svg) no-repeat;
+  -webkit-mask-size: contain;
+          mask-size: contain;
+  background-color: #383838;
+  width: 24px;
+  height: 24px;
+  top: 11px;
+  left: -24px;
+}
+
+.cat .fa-folder {
+  margin-right: 20px;
+}
+.cat .fa-folder:before {
+  width: 16px;
+  height: 16px;
+  top: 0;
+  left: 0;
+}
+
+.tag .fa-tag {
+  margin-right: 20px;
+}
+.tag .fa-tag:before {
+  width: 16px;
+  height: 16px;
+  top: 0;
+  left: 0;
+}
+
+.breadcrumb .fa-tag {
+  margin-right: 0;
+}
+.breadcrumb .fa-tag:before {
+  width: 12px;
+  height: 12px;
+  left: -16px;
+}

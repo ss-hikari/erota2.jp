@@ -1,0 +1,460 @@
+<?php
+/*
+  Copyright 2010 Scott MacVicar
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+
+  Original can be found at https://github.com/scottmac/opengraph/blob/master/OpenGraph.php
+
+*/
+
+/**
+ * Cocoon WordPress Theme
+ * @author: yhira
+ * @link: https://wp-cocoon.com/
+ * @license: http://www.gnu.org/licenses/gpl-2.0.html GPL v2 or later
+ */
+if ( !defined( 'ABSPATH' ) ) exit;
+
+// 念のため、同名クラスの衝突ガード
+if ( ! class_exists( 'OpenGraphGetter' ) ):
+class OpenGraphGetter implements Iterator
+{
+  /**
+   * There are base schema's based on type, this is just
+   * a map so that the schema can be obtained
+   *
+   */
+  public static $TYPES = array(
+    'activity' => array('activity', 'sport'),
+    'business' => array('bar', 'company', 'cafe', 'hotel', 'restaurant'),
+    'group' => array('cause', 'sports_league', 'sports_team'),
+    'organization' => array('band', 'government', 'non_profit', 'school', 'university'),
+    'person' => array('actor', 'athlete', 'author', 'director', 'musician', 'politician', 'public_figure'),
+    'place' => array('city', 'country', 'landmark', 'state_province'),
+    'product' => array('album', 'book', 'drink', 'food', 'game', 'movie', 'product', 'song', 'tv_show'),
+    'website' => array('blog', 'website'),
+  );
+
+  /**
+   * Holds all the Open Graph values we've parsed from a page
+   *
+   */
+  private $_values = array();
+
+  /**
+   * Fetches a URI and parses it for Open Graph data, returns
+   * false on error.
+   *
+   * @param $URI    URI to page to parse for Open Graph data
+   * @return OpenGraphGetter
+   */
+  static public function fetch($URI) {
+    // wp_remote_get() の第2引数 args に渡すパラメータを組み立てる
+    $args = array(
+      'user-agent' => (isset($_SERVER['HTTP_USER_AGENT'])) ? $_SERVER['HTTP_USER_AGENT'] : '',
+      // wp_remote_get() のデフォルトでは HTTP/1.0 でアクセスされるが、さすがに古すぎるので HTTP/1.1 に変更
+      'httpversion' => '1.1',
+      // gzip, deflate で圧縮されたレスポンスを自動展開する (既定で true のはずだが念のため明示)
+      'decompress' => true,
+    );
+    if (is_amazon_site_page($URI)) {
+      // Amazon では常に Twitterbot のユーザーエージェントでアクセスする
+      // ref: https://github.com/xserver-inc/cocoon/pull/60
+      $args['user-agent'] = 'Twitterbot/1.0';
+    }
+    if (is_rakuten_site_page($URI)) {
+      // 2026年1月現在、何も HTTP ヘッダーを指定せずに楽天の商品ページにアクセスすると、
+      // クローラーと判定されてしまうのか、レスポンスが10秒以上返ってこない問題がある
+      // レスポンス返却に時間がかかると、wp_remote_get() の既定タイムアウト秒数に引っ掛かって取得に失敗する
+      // 取得失敗時は DB キャッシュが登録されないため、結果楽天の URL を貼れば貼るほど毎回 OGP 取得が試行されロードが遅くなる
+      // 以下のヘッダーを全て設定しブラウザ (macOS Chrome) に偽装することで、大半の環境ではクローラー判定を回避できる
+      $args['headers'] = array(
+        'accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+        'accept-encoding' => 'gzip, deflate',  // ブラウザでは br, zstd も指定するが、WordPress が対応していない
+        'accept-language' => 'ja',
+        'cache-control' => 'no-cache',
+        'pragma' => 'no-cache',
+        'priority' => 'u=0, i',
+        'sec-ch-ua' => '"Google Chrome";v="143", "Chromium";v="143", "Not A(Brand";v="24"',
+        'sec-ch-ua-mobile' => '?0',
+        'sec-ch-ua-platform' => '"macOS"',
+        'sec-fetch-dest' => 'document',
+        'sec-fetch-mode' => 'navigate',
+        'sec-fetch-site' => 'same-origin',
+        'sec-fetch-user' => '?1',
+        'upgrade-insecure-requests' => '1',
+      );
+      $args['user-agent'] = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36';
+      // フェイルセーフ: 今後楽天側の仕様変更で上記対策が効かなくなった時向けに、楽天のみタイムアウトを15秒に延長する
+      // あくまで取得に10秒強かかるだけで HTML は通常と同じものが返されるので、その場合に取得失敗しないようにする
+      $args['timeout'] = 15;
+    }
+
+    $res = wp_remote_get( $URI, $args );
+    $response_code = wp_remote_retrieve_response_code( $res );
+
+    $response = null;
+    if (!is_wp_error( $res ) && $response_code === 200) {
+      $response = $res['body'];
+    } else if (!is_admin()) {
+      // wp_remote_get が WP_Error を返した場合（タイムアウト・DNS解決失敗・接続拒否等）は
+      // フォールバック（file_get_contents等）でリトライしても同じネットワーク障害で失敗する可能性が高く、
+      // タイムアウト時間が加算されて 504 Gateway Timeout を引き起こすため、フォールバックは行わない
+      if ( !is_wp_error( $res ) ) {
+        $response = wp_filesystem_get_contents($URI, true);
+
+        if (!$response) {
+          $response = get_http_content($URI);
+        }
+      }
+    }
+    if (!empty($response)) {
+        return self::_parse($response, $URI);
+    } else {
+        return false;
+    }
+  }
+
+  /**
+   * Parses HTML and extracts Open Graph data, this assumes
+   * the document is at least well formed.
+   *
+   * @param $HTML    HTML to parse
+   * @return OpenGraphGetter
+   */
+  static private function _parse($HTML, $URI = null) {
+    $old_libxml_error = libxml_use_internal_errors(true);
+
+    $doc = new DOMDocument();
+    // //UTF-8ページの文字化け問題
+    // //対処法1：http://qiita.com/kobake@github/items/3c5d09f9584a8786339d
+    // //対処法2：http://nplll.com/archives/2011/06/_domdocumentloadhtml.php
+    // $HTML = @mb_convert_encoding($HTML, 'HTML-ENTITIES', 'ASCII, JIS, UTF-8, EUC-JP, SJIS');
+
+    // 上記の方法で新しいPHPの仕様で非推奨になったため、以下の方法を選択
+    // //対処法3：https://wp-cocoon.com/community/postid/77632/
+    $HTML = mb_convert_encoding($HTML, 'UTF-8', 'ASCII, JIS, UTF-8, EUC-JP, SJIS');
+    $HTML = mb_encode_numericentity($HTML, [0x80, 0x10FFFF, 0, 0x1FFFFF], 'UTF-8');
+    if (!$HTML) {
+      return false;
+    }
+    $doc->loadHTML($HTML);
+
+    //タイトルタグからタイトル情報を取得
+    preg_match( "/<title>(.*?)<\/title>/i", $HTML, $matches);
+    $title = $matches ? $matches[1] : null;
+    //メタディスクリプションタグからタイトル情報を取得
+    preg_match( '{<meta name="description" content="(.*?)".*?>}i', $HTML, $matches);
+    $description = $matches ? $matches[1] : null;
+    if (!$description) {
+      preg_match( "{<meta name='description' content='(.*?)'.*?>}i", $HTML, $matches);
+      $description = $matches ? $matches[1] : null;
+    }
+
+    libxml_use_internal_errors($old_libxml_error);
+
+    $tags = $doc->getElementsByTagName('meta');
+
+    if ((!$tags || $tags->length === 0) && !$title) {
+      return false;
+    }
+
+    $page = new self();
+    $page->_values['title'] = $title;
+
+    $nonOgDescription = null;
+
+    foreach ($tags AS $tag) {
+      if ($tag->hasAttribute('property') &&
+          strpos($tag->getAttribute('property'), 'og:') === 0) {
+        $key = strtr(substr($tag->getAttribute('property'), 3), '-', '_');
+        $page->_values[$key] = $tag->getAttribute('content');
+      }
+
+      //Added this if loop to retrieve description values from sites like the New York Times who have malformed it.
+      if ($tag ->hasAttribute('value') && $tag->hasAttribute('property') &&
+          strpos($tag->getAttribute('property'), 'og:') === 0) {
+        $key = strtr(substr($tag->getAttribute('property'), 3), '-', '_');
+        $page->_values[$key] = $tag->getAttribute('value');
+      }
+      //Based on modifications at https://github.com/bashofmann/opengraph/blob/master/src/OpenGraph/OpenGraph.php
+      if ($tag->hasAttribute('name') && $tag->getAttribute('name') === 'description') {
+                $nonOgDescription = $tag->getAttribute('content');
+            }
+
+    }
+
+    //Based on modifications at https://github.com/bashofmann/opengraph/blob/master/src/OpenGraph/OpenGraph.php
+    if (!isset($page->_values['title'])) {
+            $titles = $doc->getElementsByTagName('title');
+            if ($titles->length > 0) {
+                $page->_values['title'] = $titles->item(0)->textContent;
+            }
+
+        }
+        if (!isset($page->_values['description']) && $nonOgDescription) {
+            $page->_values['description'] = $nonOgDescription;
+        }
+
+        // 楽天商品ページの取得時は、汎用ロゴの回避と高画質メイン画像の抽出を行う
+        if (is_rakuten_site_page($URI)) {
+            // 楽天の汎用ロゴやnoimage画像を検知した場合は無効化し、商品画像を探し直す
+            if (isset($page->_values['image']) && preg_match('#(?:r10s\.jp/com/img/.*logo|no_?image)#i', $page->_values['image'])) {
+                unset($page->_values['image']);
+            }
+
+            // 画像URLがまだ見つかっていない場合、XPathを使用してHTML内からメイン商品画像を抽出
+            if (!isset($page->_values['image'])) {
+                $domxpath = new DOMXPath($doc);
+                $queries = array(
+                    "//meta[@itemprop='image']",
+                    "//img[@itemprop='image']",
+                    "//img[contains(@src, 'image.rakuten.co.jp') or contains(@src, 'tshop.r10s.jp') or contains(@src, 'thumbnail.image.rakuten.co.jp')]"
+                );
+                
+                foreach ($queries as $query) {
+                    $elements = $domxpath->query($query);
+                    if ($elements && $elements->length > 0) {
+                        // 対象が複数見つかった場合、有効なもの(ロゴ等でないもの)が見つかるまでループする
+                        foreach ($elements as $element) {
+                            // metaタグ用はcontent属性、imgタグ等はsrc属性から画像URLを取得
+                            if ($element instanceof DOMElement) {
+                                $src = $element->hasAttribute('content') ? $element->getAttribute('content') : ($element->hasAttribute('src') ? $element->getAttribute('src') : null);
+                                // data:image等のLazy Loadダミーを弾くため URL が記述されていることを確認
+                                if (!empty($src) && preg_match('/^(?:https?:)?\/\//i', $src) && !preg_match('#(?:r10s\.jp/com/img/.*logo|no_?image)#i', $src)) {
+                                    // 格納時は生URLを保持
+                                    $page->_values['image']     = $src;
+                                    $page->_values['image_src'] = $src;
+                                    break 2; // 有効な画像が見つかれば外側の $queries ループごと抜ける
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 楽天の画像URLに付与されるサイズ制限パラメータ(?_ex=400x400や?fitin=...など)を除去してオリジナル最高画質化
+            // ※他社CDNの署名付きURL等でのパラメータ破壊を防ぐため、楽天の画像サーバであるかを検証した上で除去
+            if (isset($page->_values['image']) && preg_match('/(?:image\.rakuten\.co\.jp|r10s\.jp|thumbnail\.image\.rakuten\.co\.jp)/i', $page->_values['image'])) {
+                // preg_replace は正規表現エラー時に null を返すため、元のURLが消失しないようにチェックする
+                $clean_src = preg_replace('/[\?#].*$/', '', $page->_values['image']);
+                if ($clean_src !== null) {
+                    $page->_values['image'] = $clean_src;
+                    $page->_values['image_src'] = $clean_src;
+                }
+            }
+        }
+
+        //Fallback to use image_src if ogp::image isn't set.
+        if (!isset($page->_values['image'])) {
+            $domxpath = new DOMXPath($doc);
+            $elements = $domxpath->query("//link[@rel='image_src']");
+
+            if ($elements->length > 0) {
+                $domattr = $elements->item(0)->attributes->getNamedItem('href');
+                if ($domattr) {
+                    if (is_amazon_site_page($URI)) {
+                      // preg_replace は正規表現エラー時に null を返すため、元のURLが消失しないようにチェックする
+                      $clean_src = preg_replace('/[^\.]+?\.jpg$/', '.jpg', $domattr->value);
+                      if ($clean_src !== null) {
+                          $domattr->value = $clean_src;
+                      }
+                    }
+                    // ここでのエスケープは外し、生URLを保持
+                    $page->_values['image'] = $domattr->value;
+                    $page->_values['image_src'] = $domattr->value;
+                }
+            }
+        }
+
+        // HTMLソースからのAmazon固有の画像抽出 (フォールバック処理)
+        if (is_amazon_site_page($URI)) {
+            // 汎用的なAmazonロゴが取得されている場合は無効化し、商品画像の再探索を許可する
+            $has_valid_image = isset($page->_values['image']) && !preg_match('/(?:amazon_logo|amazon-icon|no-image)/i', $page->_values['image']);
+            
+            if (!$has_valid_image) {
+                // XPathが未初期化の場合は初期化
+                if (!isset($domxpath)) {
+                    $domxpath = new DOMXPath($doc);
+                }
+
+                $amazon_img_src = null;
+
+                // 1. OGPやTwitterカードのメタタグから直接探索 (DOM解析で漏れた場合を考慮)
+                $meta_images = $domxpath->query("//meta[@property='og:image' or @name='twitter:image']");
+                foreach ($meta_images as $meta_img) {
+                    if ($meta_img instanceof DOMElement) {
+                        $content = $meta_img->getAttribute('content');
+                        // 汎用ロゴでないかをチェック
+                        if ($content && !preg_match('/(?:amazon_logo|amazon-icon|no-image)/i', $content)) {
+                            $amazon_img_src = $content;
+                            break;
+                        }
+                    }
+                }
+
+                // 2. ページ内の主な商品画像IDから抽出 (標準商品、書籍、Kindle、デジタルミュージック等のエッジケース対応)
+                if (!$amazon_img_src) {
+                    $img_nodes = $domxpath->query("//img[@id='landingImage' or @id='imgBlkFront' or @id='ebooksImgBlkFront' or @id='main-image'] | //div[@id='dmusicProductImage_feature_div']//img");
+                    if ($img_nodes->length > 0) {
+                        $img = $img_nodes->item(0);
+                        if ($img instanceof DOMElement) {
+                            // 高解像度画像属性を優先確認
+                            $amazon_img_src = $img->getAttribute('data-old-hires');
+                            
+                            // 動的画像プロパティ (JSON) を確認
+                            if (!$amazon_img_src) {
+                                $dynamic_img = $img->getAttribute('data-a-dynamic-image');
+                                if ($dynamic_img) {
+                                    $images = json_decode(htmlspecialchars_decode($dynamic_img, ENT_QUOTES), true);
+                                    if (is_array($images) && !empty($images)) {
+                                        $urls = array_keys($images);
+                                        // 最初のURL（通常はベースとなる高解像度画像）を取得
+                                        $amazon_img_src = $urls[0];
+                                    }
+                                }
+                            }
+                            
+                            // 通常のsrc属性へのフォールバック（遅延ロード用のbase64の場合は除外）
+                            if (!$amazon_img_src) {
+                                $src_attr = $img->getAttribute('src');
+                                if ($src_attr && strpos($src_attr, 'data:image') !== 0) {
+                                    $amazon_img_src = $src_attr;
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // 取得したURLを格納（エスケープせず生URLを保持）
+                if ($amazon_img_src) {
+                    $page->_values['image'] = $amazon_img_src;
+                }
+            }
+
+            // 3. Amazon特有の画像サイズ縮小パラメータの除去（OGP画像が先に採用されていた場合でも強制的に高解像度化する）
+            if (!empty($page->_values['image'])) {
+                // 例: https://m.media-amazon.com/images/I/41Pq23x1-AL._AC_SY400_.jpg -> ...AL.jpg
+                // preg_replace は正規表現エラー時に null を返すため、元のURLが消失しないようにチェックする
+                $clean_src = preg_replace('/\._[^.]+\.(jpg|jpeg|png|gif|webp)$/i', '.$1', $page->_values['image']);
+                if ($clean_src !== null) {
+                    $page->_values['image'] = $clean_src;
+                }
+            }
+        }
+
+    if (empty($page->_values)) { return false; }
+
+    // 画像URLのエスケープを全経路で一括適用（二重適用を防ぐため、ここで1回だけ実施）
+    if (isset($page->_values['image'])) {
+      $page->_values['image'] = esc_url($page->_values['image']);
+    }
+    if (isset($page->_values['image_src'])) {
+      $page->_values['image_src'] = esc_url($page->_values['image_src']);
+    }
+
+    //og:titleが空文字だったとき
+    $page_title = null;
+    if (isset($page->_values['title'])) {
+      $page_title = trim($page->_values['title']);
+    }
+    if (empty($page_title)) {
+      $page->_values['title'] = $title;
+    }
+    //og:descriptionが空文字だったとき
+    $page_description = null;
+    if (isset($page->_values['description'])) {
+      $page_description = trim($page->_values['description']);
+    }
+    if (empty($page_description)) {
+      $page->_values['description'] = $description;
+    }
+
+    return $page;
+  }
+
+  /**
+   * Helper method to access attributes directly
+   * Example:
+   * $graph->title
+   *
+   * @param $key    Key to fetch from the lookup
+   */
+  public function __get($key) {
+    if (array_key_exists($key, $this->_values)) {
+      return $this->_values[$key];
+    }
+
+    // schema プロパティへのアクセス時、og:type が設定されていない場合の E_WARNING を防止
+    if ($key === 'schema' && isset($this->_values['type'])) {
+      foreach (self::$TYPES AS $schema => $types) {
+        if (array_search($this->_values['type'], $types)) {
+          return $schema;
+        }
+      }
+    }
+  }
+
+  /**
+   * Return all the keys found on the page
+   *
+   * @return array
+   */
+  public function keys() {
+    return array_keys($this->_values);
+  }
+
+  /**
+   * Helper method to check an attribute exists
+   *
+   * @param $key
+   */
+  public function __isset($key) {
+    return array_key_exists($key, $this->_values);
+  }
+
+  /**
+   * Will return true if the page has location data embedded
+   *
+   * @return boolean Check if the page has location data
+   */
+  public function hasLocation() {
+    if (array_key_exists('latitude', $this->_values) && array_key_exists('longitude', $this->_values)) {
+      return true;
+    }
+
+    $address_keys = array('street_address', 'locality', 'region', 'postal_code', 'country_name');
+    $valid_address = true;
+    foreach ($address_keys AS $key) {
+      $valid_address = ($valid_address && array_key_exists($key, $this->_values));
+    }
+    return $valid_address;
+  }
+
+  /**
+   * Iterator code
+   */
+  private $_position = 0;
+  #[\ReturnTypeWillChange]
+  public function rewind() { reset($this->_values); $this->_position = 0; }
+  #[\ReturnTypeWillChange]
+  public function current() { return current($this->_values); }
+  #[\ReturnTypeWillChange]
+  public function key() { return key($this->_values); }
+  #[\ReturnTypeWillChange]
+  public function next() { next($this->_values); ++$this->_position; }
+  #[\ReturnTypeWillChange]
+  public function valid() { return $this->_position < sizeof($this->_values); }
+}
+endif;

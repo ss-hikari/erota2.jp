@@ -1,0 +1,18 @@
+/*   
+Theme Name: XeoryBase
+Theme URI: https://xeory.jp/
+Description: Xeoryベーステーマ
+Author: バズ部
+Author URI: https://lucy.ne.jp/bazubu/
+*/
+
+// compass
+@import "compass";
+@import "compass/reset";
+
+// お約束
+// ノーマライズCSS
+@import "normalize";
+@import "wordpress";
+// grid
+@import "grid";
